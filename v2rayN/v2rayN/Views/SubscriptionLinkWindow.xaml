@@ -1,0 +1,18 @@
+<Window x:Class="v2rayN.Views.SubscriptionLinkWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="وارد کردن لینک" Width="565" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        Style="{StaticResource WindowGlobal}" FlowDirection="RightToLeft">
+    <StackPanel Margin="22">
+        <TextBlock Text="لینک اشتراک" Margin="0,0,0,6" />
+        <TextBox x:Name="LinkInput" FlowDirection="LeftToRight" AutomationProperties.Name="لینک اشتراک"
+                 TextChanged="LinkInput_TextChanged" />
+        <TextBlock x:Name="LinkError" Margin="0,8,0,0" Foreground="IndianRed" Visibility="Collapsed"
+                   Text="یک لینک اشتراک معتبر با http یا https وارد کنید." />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button x:Name="ImportButton" Content="دریافت اشتراک" Click="Import_Click" IsDefault="True" IsEnabled="False" />
+            <Button Margin="8,0,0,0" Content="لغو" IsCancel="True" Style="{StaticResource MaterialDesignOutlinedButton}" />
+        </StackPanel>
+    </StackPanel>
+</Window>
