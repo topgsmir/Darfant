@@ -1,0 +1,74 @@
+name: Build Darfant for Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Draft release tag to receive the Windows package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.404
+      - name: Build and validate the Windows package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = Join-Path $env:RUNNER_TEMP 'v2rayN-windows-64.zip'
+          $output = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64'
+          $archive = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64.zip'
+          curl.exe --fail --location --retry 2 --output $bundle 'https://github.com/2dust/v2rayN/releases/download/7.25.6/v2rayN-windows-64.zip'
+          if ($LASTEXITCODE -ne 0) { throw 'Downloading the original v2rayN package failed.' }
+          if ((Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash -ne '9b94718c2a214a246b04dec84b9a27f1f0ced8489c2dd25eb80a0fbb806bd13f') {
+            throw 'The original v2rayN package failed SHA-256 verification.'
+          }
+
+          ./Build-Darfant.ps1 -Bundle $bundle -Output $output
+          $executable = Join-Path $output 'Darfant.exe'
+          $manifest = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($executable))
+          if ($manifest -notmatch 'requestedExecutionLevel\s+level="requireAdministrator"') {
+            throw 'Darfant.exe is missing its administrator manifest.'
+          }
+
+          Compress-Archive -LiteralPath $output -DestinationPath $archive -CompressionLevel Fastest
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $package = [IO.Compression.ZipFile]::OpenRead($archive)
+          try {
+            foreach ($entry in @('Darfant.exe', 'LICENSE.txt', 'bin/xray/xray.exe', 'bin/sing_box/sing-box.exe', 'bin/mihomo/mihomo.exe', 'bin/srss/geoip-ir.srs')) {
+              if (!$package.GetEntry("Darfant-windows-x64/$entry")) { throw "Missing ZIP entry: $entry" }
+            }
+          } finally {
+            $package.Dispose()
+          }
+      - name: Attach the package to the draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Expected a version tag such as v1.0.0.' }
+          $releaseJson = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json isDraft,assets
+          if ($LASTEXITCODE -ne 0) { throw 'Could not find the draft release.' }
+          $release = $releaseJson | ConvertFrom-Json
+          if (!$release.isDraft) { throw 'The release must still be a draft.' }
+          if ($release.assets.name -contains 'Darfant-windows-x64.zip') { throw 'The Windows package is already attached.' }
+          $archive = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64.zip'
+          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Output "Darfant-windows-x64.zip SHA-256: $hash"
+          gh release upload $env:RELEASE_TAG $archive --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Uploading the Windows package failed.' }
