@@ -9,7 +9,12 @@ public partial class SubscriptionLinkWindow : Window
     public SubscriptionLinkWindow()
     {
         InitializeComponent();
-        Loaded += (_, _) => LinkInput.Focus();
+        Loaded += (_, _) =>
+        {
+            MaxHeight = SystemParameters.WorkArea.Height;
+            Width = Math.Min(Width, SystemParameters.WorkArea.Width);
+            LinkInput.Focus();
+        };
     }
 
     private void LinkInput_TextChanged(object sender, TextChangedEventArgs e)

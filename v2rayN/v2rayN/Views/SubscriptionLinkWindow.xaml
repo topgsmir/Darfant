@@ -1,18 +1,22 @@
 <Window x:Class="v2rayN.Views.SubscriptionLinkWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="وارد کردن لینک" Width="565" SizeToContent="Height"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
-        Style="{StaticResource WindowGlobal}" FlowDirection="RightToLeft">
-    <StackPanel Margin="22">
-        <TextBlock Text="لینک اشتراک" Margin="0,0,0,6" />
-        <TextBox x:Name="LinkInput" FlowDirection="LeftToRight" AutomationProperties.Name="لینک اشتراک"
-                 TextChanged="LinkInput_TextChanged" />
-        <TextBlock x:Name="LinkError" Margin="0,8,0,0" Foreground="IndianRed" Visibility="Collapsed"
-                   Text="یک لینک اشتراک معتبر با http یا https وارد کنید." />
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button x:Name="ImportButton" Content="دریافت اشتراک" Click="Import_Click" IsDefault="True" IsEnabled="False" />
-            <Button Margin="8,0,0,0" Content="لغو" IsCancel="True" Style="{StaticResource MaterialDesignOutlinedButton}" />
+        Title="لینک اشتراک" Width="420" MinWidth="320" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" ShowInTaskbar="False"
+        Background="#F5F8F7" Foreground="#203B3B" FontFamily="Segoe UI" FlowDirection="RightToLeft">
+    <Window.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="/Darfant;component/Resources/DarfantTheme.xaml" /></ResourceDictionary.MergedDictionaries></ResourceDictionary></Window.Resources>
+    <Border Style="{StaticResource DfCard}" Margin="16">
+        <StackPanel>
+            <TextBlock Text="وارد کردن لینک" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="اشتراک پس از تأیید، خودکار دریافت می‌شود." TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource DfMuted}" Margin="0,5,0,16" />
+            <TextBlock Text="آدرس اشتراک" FontSize="12" Margin="2,0,0,6" />
+            <TextBox x:Name="LinkInput" Style="{StaticResource DfInput}" FlowDirection="LeftToRight" AutomationProperties.Name="لینک اشتراک" TextChanged="LinkInput_TextChanged" />
+            <TextBlock x:Name="LinkError" Margin="0,8,0,0" Foreground="#AD5049" Visibility="Collapsed" FontSize="11" TextWrapping="Wrap" Text="لینک اشتراک باید با http یا https شروع شود." />
+            <Grid Margin="0,18,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Button x:Name="ImportButton" Style="{StaticResource DfPrimary}" Content="دریافت اشتراک" Click="Import_Click" IsDefault="True" IsEnabled="False" />
+                <Button Grid.Column="2" Content="انصراف" IsCancel="True" Style="{StaticResource DfButton}" />
+            </Grid>
         </StackPanel>
-    </StackPanel>
+    </Border>
 </Window>

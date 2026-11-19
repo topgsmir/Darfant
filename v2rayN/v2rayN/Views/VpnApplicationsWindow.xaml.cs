@@ -16,6 +16,11 @@ public partial class VpnApplicationsWindow : Window
         ApplicationList.ItemsSource = _applications.View;
         UpdateSaveButton();
         Loaded += LoadApplications;
+        Loaded += (_, _) =>
+        {
+            Width = Math.Min(Width, SystemParameters.WorkArea.Width);
+            Height = Math.Min(Height, SystemParameters.WorkArea.Height);
+        };
     }
 
     private async void LoadApplications(object sender, RoutedEventArgs e)

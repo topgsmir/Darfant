@@ -1,10 +1,12 @@
 using System.Windows.Controls;
+using ServiceLib.Models.Dto;
 
 namespace v2rayN.Views;
 
 public partial class MainWindow
 {
     private bool _updatingVpnScope;
+    private bool _pingRunning;
 
     private async void ImportLink_Click(object sender, RoutedEventArgs e)
     {
@@ -20,6 +22,7 @@ public partial class MainWindow
         }
 
         btnImportLink.IsEnabled = false;
+        btnImportLink.Content = "دریافت اشتراک…";
         try
         {
             await model.ImportSubscriptionAsync(link);
@@ -27,6 +30,7 @@ public partial class MainWindow
         finally
         {
             btnImportLink.IsEnabled = true;
+            btnImportLink.Content = "وارد کردن لینک";
         }
     }
 
@@ -52,14 +56,21 @@ public partial class MainWindow
     {
         if (ViewModel is { } model)
         {
-            btnPingAll.IsEnabled = false;
+            if (_pingRunning)
+            {
+                model.ProfilesViewModel.ServerSpeedtestStop();
+                return;
+            }
+            _pingRunning = true;
+            PingLabel.Text = "توقف تست";
             try
             {
                 await model.ProfilesViewModel.ServerSpeedtest(ESpeedActionType.Realping, allSubscriptions: true);
             }
             finally
             {
-                btnPingAll.IsEnabled = true;
+                _pingRunning = false;
+                PingLabel.Text = "تست پینگ همگی";
             }
         }
     }
@@ -67,23 +78,30 @@ public partial class MainWindow
     private void RefreshVpnScope()
     {
         _updatingVpnScope = true;
-        cmbVpnScope.SelectedIndex = (int)_config.TunModeItem.Scope;
+        scopeSystem.IsChecked = _config.TunModeItem.Scope == ETunScope.System;
+        scopeBrowsers.IsChecked = _config.TunModeItem.Scope == ETunScope.Browsers;
+        scopeApplications.IsChecked = _config.TunModeItem.Scope == ETunScope.Applications;
         btnChooseApplications.Visibility = _config.TunModeItem.Scope == ETunScope.Applications
             ? Visibility.Visible : Visibility.Collapsed;
+        btnChooseApplications.Content = $"انتخاب برنامه‌ها · {_config.TunModeItem.ApplicationPaths?.Count ?? 0} برنامه";
         _updatingVpnScope = false;
     }
 
-    private async void VpnScope_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void VpnScope_Checked(object sender, RoutedEventArgs e)
     {
-        if (_updatingVpnScope || _config == null || ViewModel is not { } model || cmbVpnScope.SelectedIndex < 0)
+        if (_updatingVpnScope || ViewModel is not { } model || sender is not RadioButton { Tag: string value })
         {
             return;
         }
 
-        var scope = (ETunScope)cmbVpnScope.SelectedIndex;
+        var scope = (ETunScope)int.Parse(value, CultureInfo.InvariantCulture);
+        if (scope == _config.TunModeItem.Scope)
+        {
+            return;
+        }
         if (scope == ETunScope.Applications)
         {
-            await Dispatcher.Yield(DispatcherPriority.Background);
+            await System.Windows.Threading.Dispatcher.Yield(DispatcherPriority.Background);
             await ChooseApplicationsAsync(model);
             return;
         }
@@ -129,7 +147,7 @@ public partial class MainWindow
             return;
         }
 
-        var enabled = togDarfantVpn.IsChecked == true;
+        var enabled = !model.StatusBarViewModel.EnableTun;
         togDarfantVpn.IsEnabled = false;
         try
         {
@@ -140,11 +158,35 @@ public partial class MainWindow
                 return;
             }
 
+            if (enabled && model.ProfilesViewModel.SelectedProfile is { IndexId.Length: > 0 } selected)
+            {
+                await model.ProfilesViewModel.SetDefaultServer(selected.IndexId);
+            }
             model.StatusBarViewModel.EnableTun = enabled;
         }
         finally
         {
-            togDarfantVpn.IsEnabled = true;
+            RefreshConnectionState();
+        }
+    }
+
+    private async void Server_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel is { } model && sender is Button { Tag: ProfileItemModel server })
+        {
+            model.ProfilesViewModel.SelectedProfile = server;
+            await model.ProfilesViewModel.SetDefaultServer(server.IndexId);
+            RefreshConnectionState();
+        }
+    }
+
+    private async void ServerList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && ViewModel is { } model)
+        {
+            await model.ProfilesViewModel.SetDefaultServer();
+            RefreshConnectionState();
+            e.Handled = true;
         }
     }
 }
