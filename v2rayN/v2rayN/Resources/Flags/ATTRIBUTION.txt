@@ -1,0 +1,6 @@
+Twemoji flag artwork by Twitter, Inc. and other contributors.
+Licensed under Creative Commons Attribution 4.0 International.
+https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/jdecked/twemoji
+Original PNG artwork is bundled without modifications.
+Source commit: b6b55fef1e8636b540a6d016a4729ca8cdf2e60b

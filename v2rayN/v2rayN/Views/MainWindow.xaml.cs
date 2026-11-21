@@ -14,6 +14,8 @@ public partial class MainWindow
     public MainWindow()
     {
         _config = AppManager.Instance.Config;
+        _config.ServerOperatorOverrides ??= new();
+        _config.SubIndexId = string.Empty;
         InitializeComponent();
         RefreshVpnScope();
         if (App.ProgramStarted != null)
@@ -27,6 +29,7 @@ public partial class MainWindow
 
         this.WhenActivated(disposables =>
         {
+            InitializeServerList(ViewModel);
             ViewModel.ReadTextFromClipboardInteraction.RegisterHandler(interaction =>
                 interaction.SetOutput(WindowsUtils.GetClipboardData())).DisposeWith(disposables);
             ViewModel.ShowHideWindowInteraction.RegisterHandler(interaction =>
@@ -190,11 +193,16 @@ public partial class MainWindow
         AppManager.Instance.ShowInTaskbar = visible;
     }
 
-    protected override void OnLoaded(object? sender, RoutedEventArgs e)
+    protected override async void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        var saved = ConfigHandler.GetWindowSizeItem(_config, "DarfantCompact");
+        var saved = ConfigHandler.GetWindowSizeItem(_config, "DarfantServerList");
         Width = Math.Clamp(saved?.Width ?? 460, MinWidth, Math.Max(MinWidth, SystemParameters.WorkArea.Width));
-        Height = Math.Clamp(saved?.Height ?? 740, MinHeight, Math.Max(MinHeight, SystemParameters.WorkArea.Height));
+        Height = Math.Clamp(saved?.Height ?? 580, MinHeight, Math.Max(MinHeight, SystemParameters.WorkArea.Height));
+        if (ViewModel is { } model)
+        {
+            model.ProfilesViewModel.SelectedSub = model.ProfilesViewModel.SubItems.FirstOrDefault() ?? new();
+            await model.ProfilesViewModel.RefreshServersBiz();
+        }
         if (_config.UiItem.AutoHideStartup)
         {
             ShowHideWindow(false);
@@ -205,7 +213,7 @@ public partial class MainWindow
     {
         if (WindowState == WindowState.Normal)
         {
-            ConfigHandler.SaveWindowSizeItem(_config, "DarfantCompact", Width, Height);
+            ConfigHandler.SaveWindowSizeItem(_config, "DarfantServerList", Width, Height);
         }
     }
 

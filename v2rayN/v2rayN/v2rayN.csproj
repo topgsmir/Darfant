@@ -5,7 +5,7 @@
 		<AssemblyName>Darfant</AssemblyName>
 		<RootNamespace>v2rayN</RootNamespace>
 		<Product>دارفانت</Product>
-		<Version>1.1.0</Version>
+		<Version>1.2.0</Version>
 		<Description>دارفانت</Description>
 		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
 		<GenerateSatelliteAssembliesForCore>true</GenerateSatelliteAssembliesForCore>
@@ -39,6 +39,8 @@
 		<Resource Include="Resources\NotifyIcon4.ico" />
 		<Resource Include="Resources\v2rayN.ico" />
 		<Resource Include="Resources\Darfant.ico" />
+		<Resource Include="Resources\Flags\*.png" />
+		<None Update="Resources\Flags\*.txt" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>

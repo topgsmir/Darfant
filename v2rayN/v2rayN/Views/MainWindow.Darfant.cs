@@ -83,7 +83,7 @@ public partial class MainWindow
         scopeApplications.IsChecked = _config.TunModeItem.Scope == ETunScope.Applications;
         btnChooseApplications.Visibility = _config.TunModeItem.Scope == ETunScope.Applications
             ? Visibility.Visible : Visibility.Collapsed;
-        btnChooseApplications.Content = $"انتخاب برنامه‌ها · {_config.TunModeItem.ApplicationPaths?.Count ?? 0} برنامه";
+        btnChooseApplications.ToolTip = $"انتخاب برنامه‌ها · {_config.TunModeItem.ApplicationPaths?.Count ?? 0} برنامه";
         _updatingVpnScope = false;
     }
 

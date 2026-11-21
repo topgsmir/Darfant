@@ -69,19 +69,23 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             try
             {
-                await ProfileExManager.Instance.SaveTo();
+                try
+                {
+                    await ProfileExManager.Instance.SaveTo();
+                }
+                finally
+                {
+                    await UpdateFunc("", ResUI.SpeedtestingCompleted);
+                }
             }
             finally
             {
-                await UpdateFunc("", ResUI.SpeedtestingCompleted);
+                lock (_runLock)
+                {
+                    _runCtsList.Remove(runCts);
+                }
+                runCts.Dispose();
             }
-
-            lock (_runLock)
-            {
-                _runCtsList.Remove(runCts);
-            }
-
-            runCts.Dispose();
         }
     }
 
@@ -119,13 +123,20 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             _ = UpdateFunc("", ResUI.SpeedtestingStop);
-            await SetTestResultAsync(lstSelected.Where(it => !completedIds.ContainsKey(it.IndexId)).ToList(),
-                actionType, ResUI.SpeedtestingSkip).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
             _ = UpdateFunc("", ex.Message);
+        }
+        finally
+        {
+            foreach (var item in lstSelected.Where(item => !completedIds.ContainsKey(item.IndexId)))
+            {
+                ProfileExManager.Instance.SetTestDelay(item.IndexId, -1);
+                var terminalResult = ct.IsCancellationRequested ? ResUI.SpeedtestingSkip : "-1";
+                await SetTestResultAsync([item], actionType, terminalResult).ConfigureAwait(false);
+            }
         }
     }
 
@@ -272,7 +283,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             }
             else
             {
-                await RunMixedTestAsync(lstSelected, completedIds, _config.SpeedTestItem.MixedConcurrencyCount, false, ct);
+                await RunMixedTestAsync(lstFailed, completedIds, Math.Max(1, _config.SpeedTestItem.MixedConcurrencyCount), false, ct);
             }
         }
     }
@@ -283,6 +294,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         ProcessService processService = null;
         try
         {
+            ct.ThrowIfCancellationRequested();
             processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds);
             if (processService is null)
             {
@@ -331,7 +343,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             if (processService != null)
             {
-                await processService?.StopAsync();
+                await processService.StopAsync();
+                processService.Dispose();
             }
         }
         return true;
@@ -374,6 +387,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         ProcessService processService = null;
         try
         {
+            ct.ThrowIfCancellationRequested();
             processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds);
             if (processService is null)
             {
@@ -422,7 +436,8 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
         {
             if (processService != null)
             {
-                await processService?.StopAsync();
+                await processService.StopAsync();
+                processService.Dispose();
             }
         }
         return true;
@@ -436,7 +451,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
 
         var parallelOptions = new ParallelOptions
         {
-            MaxDegreeOfParallelism = concurrencyCount,
+            MaxDegreeOfParallelism = Math.Max(1, concurrencyCount),
             CancellationToken = ct,
         };
 
@@ -482,6 +497,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 if (processService != null)
                 {
                     await processService.StopAsync();
+                    processService.Dispose();
                 }
             }
         });
@@ -495,6 +511,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
 
         ProfileExManager.Instance.SetTestDelay(it.IndexId, responseTime);
         await UpdateFunc(it.IndexId, responseTime.ToString());
+        completedIds.TryAdd(it.IndexId, 0);
 
         if (!_config.UiItem.HideColumnIpInfo && responseTime > 0)
         {
@@ -508,7 +525,6 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             await UpdateIpInfoFunc(it.IndexId, ResUI.SpeedtestingSkip);
         }
 
-        completedIds.TryAdd(it.IndexId, 0);
         return responseTime;
     }
 
@@ -556,20 +572,18 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
             return responseTime;
         }
 
-        if (!IPAddress.TryParse(url, out var ipAddress))
-        {
-            var ipHostInfo = await Dns.GetHostEntryAsync(url, ct);
-            ipAddress = ipHostInfo.AddressList.First();
-        }
-
-        IPEndPoint endPoint = new(ipAddress, port);
-        using Socket clientSocket = new(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
         var timer = Stopwatch.StartNew();
         try
         {
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+            if (!IPAddress.TryParse(url, out var ipAddress))
+            {
+                var ipHostInfo = await Dns.GetHostEntryAsync(url, linkedCts.Token);
+                ipAddress = ipHostInfo.AddressList.First();
+            }
+            IPEndPoint endPoint = new(ipAddress, port);
+            using Socket clientSocket = new(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             await clientSocket.ConnectAsync(endPoint, linkedCts.Token).ConfigureAwait(false);
             responseTime = (int)timer.ElapsedMilliseconds;
         }

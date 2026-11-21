@@ -5,8 +5,9 @@
     xmlns:vms="clr-namespace:ServiceLib.ViewModels;assembly=ServiceLib"
     xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
+    xmlns:conv="clr-namespace:v2rayN.Converters"
     x:TypeArguments="vms:MainWindowViewModel" x:Name="Shell"
-    Title="دارفانت" Width="460" Height="740" MinWidth="360" MinHeight="500"
+    Title="دارفانت" Width="460" Height="580" MinWidth="360" MinHeight="440"
     WindowStartupLocation="CenterScreen" ResizeMode="CanResize"
     Background="#F5F8F7" Foreground="#203B3B" FontFamily="Segoe UI" FontSize="13"
     TextOptions.TextFormattingMode="Display" UseLayoutRounding="True" SnapsToDevicePixels="True"
@@ -17,9 +18,11 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Darfant;component/Resources/DarfantTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <conv:ServerFlagConverter x:Key="ServerFlag" />
+            <conv:PingResultConverter x:Key="PingResult" />
             <Style x:Key="PowerButton" TargetType="ToggleButton">
-                <Setter Property="Width" Value="84" />
-                <Setter Property="Height" Value="84" />
+                <Setter Property="Width" Value="40" />
+                <Setter Property="Height" Value="40" />
                 <Setter Property="Background" Value="#EAF4F1" />
                 <Setter Property="Foreground" Value="#137D72" />
                 <Setter Property="Cursor" Value="Hand" />
@@ -29,7 +32,7 @@
                             <Grid>
                                 <Ellipse Fill="{TemplateBinding Background}" />
                                 <Ellipse x:Name="Ring" Stroke="#D5E8E0" StrokeThickness="1" Margin="1" />
-                                <md:PackIcon Kind="Power" Width="32" Height="32" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <md:PackIcon Kind="Power" Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Grid>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsChecked" Value="True">
@@ -48,13 +51,14 @@
     </Window.Resources>
     <md:DialogHost Identifier="RootDialog" CloseOnClickAway="True" Style="{StaticResource MaterialDesignEmbeddedDialogHost}">
         <Grid FlowDirection="RightToLeft" Background="{StaticResource DfCanvas}">
-            <Grid Margin="18,12,18,10">
+            <Grid Margin="12,8,12,8">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Grid Margin="2,0,2,12">
+                <Grid Margin="2,0,2,8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <TextBlock Text="دارفانت" FontSize="21" FontWeight="SemiBold" VerticalAlignment="Center" />
                     <Button x:Name="btnImportLink" Grid.Column="1" Content="وارد کردن لینک" Style="{StaticResource DfPrimary}" Click="ImportLink_Click" VerticalAlignment="Center" />
@@ -76,98 +80,108 @@
                         </Button.ContextMenu>
                     </Button>
                 </Grid>
-                <ScrollViewer Grid.Row="1" Style="{StaticResource DfScrollViewer}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False" Padding="0,0,1,0">
+                <Border Grid.Row="1" Style="{StaticResource DfCard}" Padding="6" Margin="0,0,0,6">
                     <StackPanel>
-                        <Border Style="{StaticResource DfCard}">
-                            <Grid>
-                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                <ToggleButton x:Name="togDarfantVpn" Style="{StaticResource PowerButton}" HorizontalAlignment="Center"
-                                              IsChecked="{Binding StatusBarViewModel.EnableTun, Mode=OneWay}"
-                                              Click="ToggleDarfantVpn_Click" AutomationProperties.Name="اتصال و قطع وی‌پی‌ان" />
-                                <TextBlock x:Name="ConnectionTitle" Grid.Row="1" Text="آمادهٔ اتصال" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,4" />
-                                <TextBlock x:Name="ConnectionDetail" Grid.Row="2" Text="یک سرور انتخاب کنید و متصل شوید" Foreground="{StaticResource DfMuted}"
-                                           TextTrimming="CharacterEllipsis" HorizontalAlignment="Stretch" TextAlignment="Center" FontSize="12" MaxHeight="34" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource DfCard}" Margin="0,10,0,0" Padding="13,11">
-                            <StackPanel>
-                                <TextBlock Text="محدودهٔ اتصال" FontSize="12" Foreground="{StaticResource DfMuted}" Margin="2,0,0,8" />
-                                <Border Background="{StaticResource DfCanvas}" CornerRadius="11" Padding="3">
-                                    <UniformGrid Columns="3">
-                                        <RadioButton x:Name="scopeSystem" Content="کل سیستم" GroupName="VpnScope" Style="{StaticResource DfScope}" Checked="VpnScope_Checked" Tag="0" />
-                                        <RadioButton x:Name="scopeBrowsers" Content="مرورگرها" GroupName="VpnScope" Style="{StaticResource DfScope}" Checked="VpnScope_Checked" Tag="1" />
-                                        <RadioButton x:Name="scopeApplications" Content="برنامه‌ها" GroupName="VpnScope" Style="{StaticResource DfScope}" Checked="VpnScope_Checked" Tag="2" />
-                                    </UniformGrid>
-                                </Border>
-                                <Button x:Name="btnChooseApplications" Style="{StaticResource DfButton}" Content="انتخاب برنامه‌ها" Margin="0,8,0,0"
-                                        Click="ChooseApplications_Click" Visibility="Collapsed" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <ToggleButton x:Name="togDarfantVpn" Style="{StaticResource PowerButton}"
+                                          IsChecked="{Binding StatusBarViewModel.EnableTun, Mode=OneWay}"
+                                          Click="ToggleDarfantVpn_Click" AutomationProperties.Name="اتصال و قطع وی‌پی‌ان" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                <TextBlock x:Name="ConnectionTitle" Text="آمادهٔ اتصال" FontSize="15" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ConnectionDetail" Text="یک سرور انتخاب کنید" Foreground="{StaticResource DfMuted}"
+                                           TextTrimming="CharacterEllipsis" FontSize="11" Margin="0,4,0,0" />
                             </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource DfCard}" Margin="0,10,0,0" Padding="13">
-                            <StackPanel>
-                                <Grid Margin="2,0,2,10">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <TextBlock Text="سرورها" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{Binding ProfilesViewModel.ProfileItems.Count, StringFormat={}{0} سرور}" Foreground="{StaticResource DfMuted}" FontSize="11" VerticalAlignment="Center" />
-                                </Grid>
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                                    <Button x:Name="btnRefreshLinks" Style="{StaticResource DfButton}" Click="RefreshLinks_Click" AutomationProperties.Name="به‌روزرسانی لینک">
-                                        <StackPanel Orientation="Horizontal"><md:PackIcon Kind="Refresh" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" /><TextBlock Text="به‌روزرسانی لینک" /></StackPanel>
-                                    </Button>
-                                    <Button x:Name="btnPingAll" Grid.Column="2" Style="{StaticResource DfButton}" Click="PingAll_Click" AutomationProperties.Name="تست پینگ همگی یا توقف تست">
-                                        <StackPanel Orientation="Horizontal"><md:PackIcon Kind="Pulse" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" /><TextBlock x:Name="PingLabel" Text="تست پینگ همگی" /></StackPanel>
-                                    </Button>
-                                </Grid>
-                                <ComboBox x:Name="SubscriptionGroups" ItemsSource="{Binding ProfilesViewModel.SubItems}"
-                                          SelectedItem="{Binding ProfilesViewModel.SelectedSub, Mode=TwoWay}" DisplayMemberPath="Remarks"
-                                          MinHeight="32" Margin="3,0,3,8" FontSize="12" Foreground="{StaticResource DfInk}"
-                                          AutomationProperties.Name="گروه اشتراک" />
-                                <Grid Margin="0,0,0,8">
-                                <TextBox x:Name="ServerSearch" Style="{StaticResource DfInput}"
-                                         Text="{Binding ProfilesViewModel.ServerFilter, UpdateSourceTrigger=PropertyChanged}"
-                                         AutomationProperties.Name="جستجوی سرور" ToolTip="جستجوی سرور">
-                                    <TextBox.Background><SolidColorBrush Color="#F5F8F7" /></TextBox.Background>
-                                </TextBox>
-                                <TextBlock Text="جستجوی سرور" Margin="12,0" VerticalAlignment="Center" Foreground="{StaticResource DfMuted}" FontSize="12" IsHitTestVisible="False">
-                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=ServerSearch}" Value=""><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
-                                </TextBlock>
-                                </Grid>
-                                <ListBox x:Name="ServerList" ItemsSource="{Binding ProfilesViewModel.ProfileItems}" SelectedItem="{Binding ProfilesViewModel.SelectedProfile, Mode=TwoWay}"
-                                         BorderThickness="0" Background="Transparent" Padding="0" MaxHeight="140"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                         ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
-                                         ItemContainerStyle="{StaticResource DfListItem}" PreviewKeyDown="ServerList_PreviewKeyDown"
-                                         AutomationProperties.Name="فهرست سرورها">
-                                    <ListBox.Resources><Style TargetType="ScrollViewer" BasedOn="{StaticResource DfScrollViewer}" /></ListBox.Resources>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Click="Server_Click" Tag="{Binding}" Style="{StaticResource DfButton}" BorderThickness="0" Background="Transparent" Padding="10,9" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding Remarks}">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="74" /></Grid.ColumnDefinitions>
-                                                    <md:PackIcon Kind="ServerNetworkOutline" Width="19" Height="19" Foreground="{StaticResource DfAccent}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding Remarks}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding Remarks}" VerticalAlignment="Center" />
-                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                        <TextBlock Text="{Binding DelayVal}" FontSize="11" MaxWidth="70" TextTrimming="CharacterEllipsis" Foreground="{StaticResource DfAccent}" FlowDirection="LeftToRight" />
-                                                        <TextBlock x:Name="ActiveMarker" Text="انتخاب‌شده" FontSize="9" Foreground="{StaticResource DfAccent}" Margin="0,2,0,0" Visibility="Collapsed" />
-                                                    </StackPanel>
-                                                </Grid>
-                                            </Button>
-                                            <DataTemplate.Triggers><DataTrigger Binding="{Binding IsActive}" Value="True"><Setter TargetName="ActiveMarker" Property="Visibility" Value="Visible" /></DataTrigger></DataTemplate.Triggers>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                                <StackPanel x:Name="EmptyServers" HorizontalAlignment="Center" Margin="10,16">
-                                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ProfilesViewModel.ProfileItems.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
-                                    <md:PackIcon Kind="ServerOff" Width="28" Height="28" Foreground="#A5B8B0" HorizontalAlignment="Center" />
-                                    <TextBlock Text="سروری پیدا نشد" FontSize="12" Margin="0,7,0,3" HorizontalAlignment="Center" />
-                                    <TextBlock Text="لینک اشتراک را از بالای پنجره وارد کنید" FontSize="11" Foreground="{StaticResource DfMuted}" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
-                            </StackPanel>
+                            <Button x:Name="btnChooseApplications" Grid.Column="2" Style="{StaticResource DfIconButton}" Width="30" Height="30" MinHeight="30"
+                                    AutomationProperties.Name="انتخاب برنامه‌ها" Click="ChooseApplications_Click" Visibility="Collapsed">
+                                <md:PackIcon Kind="Apps" Width="18" Height="18" />
+                            </Button>
+                        </Grid>
+                        <Border Background="{StaticResource DfCanvas}" CornerRadius="9" Padding="2" Margin="0,6,0,0" ToolTip="محدودهٔ اتصال">
+                            <UniformGrid Columns="3">
+                                <RadioButton x:Name="scopeSystem" Content="کل سیستم" GroupName="VpnScope" Style="{StaticResource DfScope}" Padding="2,4" Checked="VpnScope_Checked" Tag="0" />
+                                <RadioButton x:Name="scopeBrowsers" Content="مرورگرها" GroupName="VpnScope" Style="{StaticResource DfScope}" Padding="2,4" Checked="VpnScope_Checked" Tag="1" />
+                                <RadioButton x:Name="scopeApplications" Content="برنامه‌ها" GroupName="VpnScope" Style="{StaticResource DfScope}" Padding="2,4" Checked="VpnScope_Checked" Tag="2" />
+                            </UniformGrid>
                         </Border>
                     </StackPanel>
-                </ScrollViewer>
-                <TextBlock Grid.Row="2" Text="ایران مستقیم  ·  به‌روزرسانی خودکار هر ۳۰ دقیقه" TextAlignment="Center" FontSize="10" Foreground="{StaticResource DfMuted}" Margin="0,10,0,0" TextWrapping="Wrap" />
+                </Border>
+                <Border Grid.Row="2" Style="{StaticResource DfCard}" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="1" Margin="0,0,0,7">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="6" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Button x:Name="btnRefreshLinks" Style="{StaticResource DfButton}" MinHeight="32" Padding="6" Click="RefreshLinks_Click" AutomationProperties.Name="به‌روزرسانی لینک">
+                                <StackPanel Orientation="Horizontal"><md:PackIcon Kind="Refresh" Width="15" Height="15" Margin="0,0,5,0" VerticalAlignment="Center" /><TextBlock Text="به‌روزرسانی لینک" /></StackPanel>
+                            </Button>
+                            <Button x:Name="btnPingAll" Grid.Column="2" Style="{StaticResource DfButton}" MinHeight="32" Padding="6" Click="PingAll_Click" AutomationProperties.Name="تست پینگ همگی یا توقف تست">
+                                <StackPanel Orientation="Horizontal"><md:PackIcon Kind="Pulse" Width="15" Height="15" Margin="0,0,5,0" VerticalAlignment="Center" /><TextBlock x:Name="PingLabel" Text="تست پینگ همگی" /></StackPanel>
+                            </Button>
+                        </Grid>
+                        <Border Grid.Row="2" Background="{StaticResource DfCanvas}" CornerRadius="9" Padding="2" Margin="0,0,0,7">
+                            <UniformGrid Columns="4">
+                                <RadioButton x:Name="categoryGeneral" Content="لیست کلی" GroupName="OperatorCategory" Style="{StaticResource DfScope}" Padding="1,7" FontSize="10.5" Checked="OperatorCategory_Checked" Tag="0" IsChecked="True" />
+                                <RadioButton x:Name="categoryIrancell" Content="ایرانسل" GroupName="OperatorCategory" Style="{StaticResource DfScope}" Padding="1,7" FontSize="10.5" Checked="OperatorCategory_Checked" Tag="1" />
+                                <RadioButton x:Name="categoryHamrahAval" Content="همراه اول" GroupName="OperatorCategory" Style="{StaticResource DfScope}" Padding="1,7" FontSize="10.5" Checked="OperatorCategory_Checked" Tag="2" />
+                                <RadioButton x:Name="categoryAllOperators" Content="همه اپراتورها" GroupName="OperatorCategory" Style="{StaticResource DfScope}" Padding="1,7" FontSize="10.5" Checked="OperatorCategory_Checked" Tag="3" />
+                            </UniformGrid>
+                        </Border>
+                        <Grid Grid.Row="3" Margin="0,0,0,5">
+                            <TextBox x:Name="ServerSearch" Style="{StaticResource DfInput}" MinHeight="32" Padding="9,6"
+                                     Text="{Binding ProfilesViewModel.ServerFilter, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="جستجوی سرور" ToolTip="جستجوی سرور" />
+                            <TextBlock Text="جستجوی سرور" Margin="10,0" VerticalAlignment="Center" Foreground="{StaticResource DfMuted}" FontSize="11" IsHitTestVisible="False">
+                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=ServerSearch}" Value=""><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                        <ListBox x:Name="ServerList" Grid.Row="4" SelectedItem="{Binding ProfilesViewModel.SelectedProfile, Mode=TwoWay}"
+                                 BorderThickness="0" Background="Transparent" Padding="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                 ItemContainerStyle="{StaticResource DfListItem}" PreviewKeyDown="ServerList_PreviewKeyDown"
+                                 AutomationProperties.Name="فهرست سرورها">
+                            <ListBox.Resources><Style TargetType="ScrollViewer" BasedOn="{StaticResource DfScrollViewer}" /></ListBox.Resources>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Click="Server_Click" Tag="{Binding}" Style="{StaticResource DfButton}" BorderThickness="0" Background="Transparent" Padding="7,7" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding Remarks}">
+                                        <Button.ContextMenu>
+                                            <ContextMenu FlowDirection="RightToLeft" DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="دسته‌بندی سرور" IsEnabled="False" />
+                                                <MenuItem Header="لیست کلی" Tag="0" Click="AssignOperator_Click" />
+                                                <MenuItem Header="ایرانسل" Tag="1" Click="AssignOperator_Click" />
+                                                <MenuItem Header="همراه اول" Tag="2" Click="AssignOperator_Click" />
+                                                <MenuItem Header="همه اپراتورها" Tag="3" Click="AssignOperator_Click" />
+                                                <Separator />
+                                                <MenuItem Header="تشخیص از نام سرور" Tag="auto" Click="AssignOperator_Click" />
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="88" /></Grid.ColumnDefinitions>
+                                            <Image Width="28" Height="24" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                <Image.Source><MultiBinding Converter="{StaticResource ServerFlag}"><Binding Path="Remarks" /><Binding Path="IpInfo" /></MultiBinding></Image.Source>
+                                            </Image>
+                                            <TextBlock Grid.Column="1" Text="{Binding Remarks}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding Remarks}" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                                <TextBlock Text="{Binding DelayVal, Converter={StaticResource PingResult}}" FontSize="11" MaxWidth="84" TextTrimming="CharacterEllipsis" Foreground="{StaticResource DfAccent}" FlowDirection="LeftToRight" />
+                                                <TextBlock x:Name="ActiveMarker" Text="انتخاب‌شده" FontSize="9" Foreground="{StaticResource DfAccent}" Margin="0,2,0,0" Visibility="Collapsed" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                    <DataTemplate.Triggers><DataTrigger Binding="{Binding IsActive}" Value="True"><Setter TargetName="ActiveMarker" Property="Visibility" Value="Visible" /></DataTrigger></DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel x:Name="EmptyServers" Grid.Row="4" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8">
+                            <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding ElementName=ServerList, Path=Items.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                            <TextBlock Text="سروری در این دسته پیدا نشد" FontSize="12" TextAlignment="Center" />
+                            <TextBlock Text="برای تعیین دسته، روی سرور کلیک راست کنید" FontSize="10" Margin="0,5,0,0" Foreground="{StaticResource DfMuted}" TextWrapping="Wrap" TextAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <TextBlock Grid.Row="3" TextAlignment="Center" FontSize="10" Foreground="{StaticResource DfMuted}" Margin="0,7,0,0" TextWrapping="Wrap"><Run Text="{Binding ElementName=ServerList, Path=Items.Count, Mode=OneWay}" /><Run Text=" سرور  ·  ایران مستقیم  ·  به‌روزرسانی هر ۳۰ دقیقه" /></TextBlock>
             </Grid>
             <Border x:Name="LogPanel" Style="{StaticResource DfCard}" Margin="12" Visibility="Collapsed">
                 <DockPanel>

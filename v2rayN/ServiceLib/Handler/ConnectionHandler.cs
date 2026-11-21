@@ -118,8 +118,10 @@ public static class ConnectionHandler
                 return null;
             }
 
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(Global.LocalFetch);
             var downloadHandle = new DownloadService();
-            var result = await downloadHandle.TryDownloadString(url, webProxy, "", cancellationToken);
+            var result = await downloadHandle.TryDownloadString(url, webProxy, "", timeout.Token).WaitAsync(timeout.Token);
             if (result == null)
             {
                 return null;

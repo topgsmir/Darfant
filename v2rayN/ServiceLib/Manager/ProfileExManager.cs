@@ -4,7 +4,8 @@ public class ProfileExManager
 {
     private static readonly Lazy<ProfileExManager> _instance = new(() => new());
     private ConcurrentBag<ProfileExItem> _lstProfileEx = [];
-    private readonly Queue<string> _queIndexIds = new();
+    private readonly ConcurrentDictionary<string, byte> _pendingIndexIds = new();
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
     public static ProfileExManager Instance => _instance.Value;
     private static readonly string _tag = "ProfileExHandler";
 
@@ -32,24 +33,27 @@ public class ProfileExManager
 
     private void IndexIdEnqueue(string indexId)
     {
-        if (indexId.IsNotEmpty() && !_queIndexIds.Contains(indexId))
+        if (indexId.IsNotEmpty())
         {
-            _queIndexIds.Enqueue(indexId);
+            _pendingIndexIds.TryAdd(indexId, 0);
         }
     }
 
     private async Task SaveQueueIndexIds()
     {
-        var cnt = _queIndexIds.Count;
-        if (cnt > 0)
+        var pendingIds = _pendingIndexIds.Keys.ToArray();
+        if (pendingIds.Length > 0)
         {
             var lstExists = await SQLiteHelper.Instance.TableAsync<ProfileExItem>().ToListAsync();
             List<ProfileExItem> lstInserts = [];
             List<ProfileExItem> lstUpdates = [];
 
-            for (var i = 0; i < cnt; i++)
+            foreach (var id in pendingIds)
             {
-                var id = _queIndexIds.Dequeue();
+                if (!_pendingIndexIds.TryRemove(id, out _))
+                {
+                    continue;
+                }
                 var item = lstExists.FirstOrDefault(t => t.IndexId == id);
                 var itemNew = _lstProfileEx?.FirstOrDefault(t => t.IndexId == id);
                 if (itemNew is null)
@@ -81,6 +85,10 @@ public class ProfileExManager
             }
             catch (Exception ex)
             {
+                foreach (var id in pendingIds)
+                {
+                    IndexIdEnqueue(id);
+                }
                 Logging.SaveLog(_tag, ex);
             }
         }
@@ -114,6 +122,7 @@ public class ProfileExManager
 
     public async Task SaveTo()
     {
+        await _saveLock.WaitAsync();
         try
         {
             await SaveQueueIndexIds();
@@ -121,6 +130,10 @@ public class ProfileExManager
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
+        }
+        finally
+        {
+            _saveLock.Release();
         }
     }
 
