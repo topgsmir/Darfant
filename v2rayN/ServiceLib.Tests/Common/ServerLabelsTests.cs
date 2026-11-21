@@ -17,14 +17,27 @@ public class ServerLabelsTests
     [Arguments("آلمان · ایرانسل", EServerOperator.Irancell)]
     [Arguments("Germany MTN", EServerOperator.Irancell)]
     [Arguments("DE · همراه‌اول", EServerOperator.HamrahAval)]
+    [Arguments("همراه_اول", EServerOperator.HamrahAval)]
+    [Arguments("🇩🇪 آلمان · همراه_اول", EServerOperator.HamrahAval)]
     [Arguments("MCI Netherlands", EServerOperator.HamrahAval)]
     [Arguments("MCI MTN", EServerOperator.AllOperators)]
     [Arguments("همه اپراتورها", EServerOperator.AllOperators)]
+    [Arguments("همه_اپراتورها", EServerOperator.AllOperators)]
+    [Arguments("🇳🇱 هلند · همه_اپراتورها", EServerOperator.AllOperators)]
     [Arguments("all-operators", EServerOperator.AllOperators)]
     [Arguments("Frankfurt", EServerOperator.General)]
     public async Task Operator_ShouldReadExplicitLabels(string name, EServerOperator expected)
     {
         await ServerLabels.DetectOperator(name, null).Should().BeEqualTo(expected);
+    }
+
+    [Test]
+    [Arguments("همراه_اول", EServerOperator.HamrahAval)]
+    [Arguments("همه_اپراتورها", EServerOperator.AllOperators)]
+    public async Task Operator_ShouldReadUnderscoresFromSubscriptionName(string subscriptionName, EServerOperator expected)
+    {
+        var profile = new ProfileItemModel { Remarks = "Frankfurt", SubRemarks = subscriptionName };
+        await ServerLabels.GetOperator(profile, new()).Should().BeEqualTo(expected);
     }
 
     [Test]

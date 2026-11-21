@@ -13,9 +13,9 @@ public static class ServerLabels
     {
         var text = Normalize($"{remarks} {subscriptionName}");
         var irancell = Regex.IsMatch(text, @"ایرانسل|(?<![a-z])(?:irancell|mtn)(?![a-z])", RegexOptions.IgnoreCase);
-        var hamrahAval = Regex.IsMatch(text, @"همراه\s*اول|(?<![a-z])(?:mci|hamrah[\s_-]*aval|irmci)(?![a-z])", RegexOptions.IgnoreCase);
+        var hamrahAval = Regex.IsMatch(text, @"همراه[\s_]*اول|(?<![a-z])(?:mci|hamrah[\s_-]*aval|irmci)(?![a-z])", RegexOptions.IgnoreCase);
         if ((irancell && hamrahAval) || Regex.IsMatch(text,
-            @"(?:همه|تمام)\s*(?:اپراتور|اپراتورها)|(?<![a-z])all[\s_-]*(?:operators?|isp)(?![a-z])",
+            @"(?:همه|تمام)[\s_]*(?:اپراتور|اپراتورها)|(?<![a-z])all[\s_-]*(?:operators?|isp)(?![a-z])",
             RegexOptions.IgnoreCase))
         {
             return EServerOperator.AllOperators;
