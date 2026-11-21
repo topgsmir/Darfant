@@ -14,6 +14,7 @@ $temporary = Join-Path ([IO.Path]::GetTempPath()) ('Darfant-' + [Guid]::NewGuid(
 $installed = Join-Path $temporary 'Installed Darfant'
 $uninstaller = Join-Path $installed 'unins000.exe'
 New-Item -ItemType Directory -Path $temporary | Out-Null
+if (!('DarfantInstallerQAPaths' -as [type])) { Add-Type -Path (Join-Path $PSScriptRoot 'ShortcutReader.cs') }
 function Invoke-TestSetup {
     $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', ('/DIR="' + $installed + '"'), ('/LOG="' + (Join-Path $temporary 'setup.log') + '"'))
     $process = Start-Process -FilePath $Installer -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
@@ -25,16 +26,6 @@ function Invoke-TestUninstall {
 }
 function Get-NormalizedShortcutPath([string] $Path) {
     # Shell links may expose long names while TEMP uses Windows 8.3 aliases.
-    if (!('DarfantInstallerQAPaths' -as [type])) {
-        Add-Type -TypeDefinition @'
-using System.Runtime.InteropServices;
-using System.Text;
-public static class DarfantInstallerQAPaths {
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern uint GetLongPathName(string path, StringBuilder result, uint capacity);
-}
-'@
-    }
     $expanded = [Environment]::ExpandEnvironmentVariables($Path).Trim('"')
     if ($expanded.StartsWith('\\?\')) { $expanded = $expanded.Substring(4) }
     $full = [IO.Path]::GetFullPath($expanded)
@@ -51,14 +42,14 @@ try {
         if (!(Test-Path -LiteralPath $destination)) { throw "Installer omitted $relative" }
         Assert-Sha256 $destination (Get-FileHash -LiteralPath $source.FullName -Algorithm SHA256).Hash
     }
-    $shell = New-Object -ComObject WScript.Shell
     foreach ($link in $links) {
         if (!(Test-Path -LiteralPath $link)) { throw "Missing shortcut: $link" }
-        $shortcut = $shell.CreateShortcut($link)
-        $target = Get-NormalizedShortcutPath $shortcut.TargetPath
-        $working = Get-NormalizedShortcutPath $shortcut.WorkingDirectory
+        $shortcut = [DarfantInstallerQAPaths]::ReadShortcut($link)
+        Write-Host "Shortcut '$link': target '$($shortcut[0])'; working folder '$($shortcut[1])'."
+        $target = Get-NormalizedShortcutPath $shortcut[0]
+        $working = Get-NormalizedShortcutPath $shortcut[1]
         if ($target -ne (Get-NormalizedShortcutPath (Join-Path $installed 'Darfant.exe')) -or $working -ne (Get-NormalizedShortcutPath $installed)) {
-            throw "Shortcut $link has target '$($shortcut.TargetPath)' and working folder '$($shortcut.WorkingDirectory)'; expected '$installed\Darfant.exe' and '$installed'."
+            throw "Shortcut $link has target '$($shortcut[0])' and working folder '$($shortcut[1])'; expected '$installed\Darfant.exe' and '$installed'."
         }
     }
     $entry = Get-ItemProperty -LiteralPath $registration
