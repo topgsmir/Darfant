@@ -23,6 +23,12 @@ function Invoke-TestUninstall {
     $process = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -WindowStyle Hidden -Wait -PassThru
     if ($process.ExitCode -ne 0) { throw "Uninstaller QA failed with exit code $($process.ExitCode)." }
 }
+function Get-NormalizedShortcutPath([string] $Path) {
+    # Shell links may expose extended-length paths or a trailing directory separator.
+    $expanded = [Environment]::ExpandEnvironmentVariables($Path).Trim('"')
+    if ($expanded.StartsWith('\\?\')) { $expanded = $expanded.Substring(4) }
+    return [IO.Path]::GetFullPath($expanded).TrimEnd('\')
+}
 try {
     Invoke-TestSetup
     foreach ($source in Get-ChildItem -LiteralPath $Package -Recurse -File) {
@@ -35,7 +41,11 @@ try {
     foreach ($link in $links) {
         if (!(Test-Path -LiteralPath $link)) { throw "Missing shortcut: $link" }
         $shortcut = $shell.CreateShortcut($link)
-        if ($shortcut.TargetPath -ne (Join-Path $installed 'Darfant.exe') -or $shortcut.WorkingDirectory -ne $installed) { throw 'The shortcut opens the wrong program or folder.' }
+        $target = Get-NormalizedShortcutPath $shortcut.TargetPath
+        $working = Get-NormalizedShortcutPath $shortcut.WorkingDirectory
+        if ($target -ne (Get-NormalizedShortcutPath (Join-Path $installed 'Darfant.exe')) -or $working -ne (Get-NormalizedShortcutPath $installed)) {
+            throw "Shortcut $link has target '$($shortcut.TargetPath)' and working folder '$($shortcut.WorkingDirectory)'; expected '$installed\Darfant.exe' and '$installed'."
+        }
     }
     $entry = Get-ItemProperty -LiteralPath $registration
     $version = (Get-Item -LiteralPath (Join-Path $Package 'Darfant.exe')).VersionInfo.ProductVersion.Split('+')[0]
