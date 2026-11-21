@@ -44,6 +44,11 @@ jobs:
           if (!(git status --porcelain)) { return }
           ./maintenance/Test-Darfant.ps1
           ./Build-Darfant.ps1 -Output (Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64')
+          $compiler = ./installer/Initialize-Toolchain.ps1 -Output (Join-Path $env:RUNNER_TEMP 'Darfant-InnoSetup')
+          $package = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64'
+          $output = Join-Path $env:RUNNER_TEMP 'Darfant-installer'
+          ./Build-Installer.ps1 -Package $package -Output $output -Compiler $compiler
+          ./installer/Test-Installer.ps1 -Installer (Join-Path $output 'Darfant-Setup-x64.exe') -Package $package
       - name: Push the tested update branch and open a draft pull request
         if: inputs.component != 'Check'
         shell: pwsh
@@ -60,7 +65,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Could not push the update branch.' }
           $body = Join-Path $env:RUNNER_TEMP 'update-pr.md'
           @"
-          Updates the pinned $env:COMPONENT dependency. Darfant's Windows build, maintenance integration checks, operator/ping regression tests, and portable packaging passed.
+          Updates the pinned $env:COMPONENT dependency. Darfant's Windows build, maintenance integration checks, operator/ping regression tests, portable packaging, and installer install/reinstall/uninstall checks passed.
 
           Review changes and check live connectivity before merging. Source conflicts are handled locally using maintenance/Update-Darfant.ps1; see maintenance/README.fa.md.
           "@ | Set-Content -LiteralPath $body -Encoding utf8

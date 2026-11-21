@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Draft release tag to receive the Windows package
+        description: Draft release tag to receive the Windows installer and portable ZIP
         required: true
         type: string
 
@@ -49,6 +49,14 @@ jobs:
           } finally {
             $package.Dispose()
           }
+      - name: Build and test the single-file Persian installer
+        shell: pwsh
+        run: |
+          $compiler = ./installer/Initialize-Toolchain.ps1 -Output (Join-Path $env:RUNNER_TEMP 'Darfant-InnoSetup')
+          $package = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64'
+          $output = Join-Path $env:RUNNER_TEMP 'Darfant-installer'
+          ./Build-Installer.ps1 -Package $package -Output $output -Compiler $compiler
+          ./installer/Test-Installer.ps1 -Installer (Join-Path $output 'Darfant-Setup-x64.exe') -Package $package
       - name: Attach the package to the draft release
         shell: pwsh
         env:
@@ -57,13 +65,19 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Expected a version tag such as v1.0.0.' }
+          [xml] $branding = Get-Content ./Darfant/Branding.props -Raw
+          if ($env:RELEASE_TAG -ne ('v' + $branding.Project.PropertyGroup.DarfantVersion)) { throw 'Release tag must match Darfant/Branding.props.' }
           $releaseJson = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json isDraft,assets
           if ($LASTEXITCODE -ne 0) { throw 'Could not find the draft release.' }
           $release = $releaseJson | ConvertFrom-Json
           if (!$release.isDraft) { throw 'The release must still be a draft.' }
           if ($release.assets.name -contains 'Darfant-windows-x64.zip') { throw 'The Windows package is already attached.' }
+          if ($release.assets.name -contains 'Darfant-Setup-x64.exe') { throw 'The installer is already attached.' }
           $archive = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64.zip'
-          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-          Write-Output "Darfant-windows-x64.zip SHA-256: $hash"
-          gh release upload $env:RELEASE_TAG $archive --repo $env:GITHUB_REPOSITORY
+          $installer = Join-Path $env:RUNNER_TEMP 'Darfant-installer/Darfant-Setup-x64.exe'
+          foreach ($file in @($installer, $archive)) {
+            $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+            Write-Output "$(Split-Path $file -Leaf) SHA-256: $hash"
+          }
+          gh release upload $env:RELEASE_TAG $installer $archive --repo $env:GITHUB_REPOSITORY
           if ($LASTEXITCODE -ne 0) { throw 'Uploading the Windows package failed.' }

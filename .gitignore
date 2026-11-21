@@ -411,3 +411,4 @@ FodyWeavers.xsd
 # Darfant dependency downloads and local package output.
 /.darfant-cache/
 /Darfant-windows-x64/
+/Darfant-installer/

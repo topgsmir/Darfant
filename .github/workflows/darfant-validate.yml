@@ -24,3 +24,11 @@ jobs:
       - name: Build the package from pinned dependencies
         shell: pwsh
         run: ./Build-Darfant.ps1 -Output (Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64')
+      - name: Build and test the Windows installer
+        shell: pwsh
+        run: |
+          $compiler = ./installer/Initialize-Toolchain.ps1 -Output (Join-Path $env:RUNNER_TEMP 'Darfant-InnoSetup')
+          $package = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64'
+          $output = Join-Path $env:RUNNER_TEMP 'Darfant-installer'
+          ./Build-Installer.ps1 -Package $package -Output $output -Compiler $compiler
+          ./installer/Test-Installer.ps1 -Installer (Join-Path $output 'Darfant-Setup-x64.exe') -Package $package

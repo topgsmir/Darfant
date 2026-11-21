@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <DarfantVersion>1.2.1</DarfantVersion>
+    <DarfantVersion>1.3.0</DarfantVersion>
     <AssemblyName>Darfant</AssemblyName>
     <RootNamespace>v2rayN</RootNamespace>
     <Product>دارفانت</Product>
