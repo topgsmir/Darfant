@@ -61,5 +61,43 @@ Name: "{userprograms}\دارفانت"; Filename: "{app}\Darfant.exe"; WorkingDir
 
 [Run]
 Filename: "{app}\Darfant.exe"; Description: "اجرای دارفانت"; Verb: "runas"; WorkingDir: "{app}"; Flags: postinstall shellexec nowait skipifsilent
+Filename: "{app}\Darfant.exe"; WorkingDir: "{app}"; Flags: nowait skipifnotsilent; Check: IsDarfantUpdate
 
-; No recursive UninstallDelete: generated subscriptions and settings survive uninstall and upgrades.
+[Code]
+function OpenProcess(Access: LongWord; InheritHandle: Boolean; ProcessId: LongWord): THandle;
+  external 'OpenProcess@kernel32.dll stdcall';
+function WaitForSingleObject(ProcessHandle: THandle; Milliseconds: LongWord): LongWord;
+  external 'WaitForSingleObject@kernel32.dll stdcall';
+function CloseHandle(ProcessHandle: THandle): Boolean;
+  external 'CloseHandle@kernel32.dll stdcall';
+
+function UpdatePid: Integer;
+begin
+  Result := StrToIntDef(ExpandConstant('{param:DarfantUpdatePid|0}'), 0);
+end;
+
+function IsDarfantUpdate: Boolean;
+begin
+  Result := UpdatePid > 0;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ProcessHandle: THandle;
+begin
+  Result := '';
+  if not IsDarfantUpdate then
+    exit;
+  { Wait for Darfant's normal shutdown so its files and connection are released. }
+  ProcessHandle := OpenProcess($00100000, False, UpdatePid);
+  if ProcessHandle = 0 then
+    exit;
+  try
+    if WaitForSingleObject(ProcessHandle, 30000) <> 0 then
+      Result := 'دارفانت را ببندید و دوباره برای نصب تلاش کنید.';
+  finally
+    CloseHandle(ProcessHandle);
+  end;
+end;
+
+{ No recursive UninstallDelete: settings survive uninstall and upgrades. }

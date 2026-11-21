@@ -207,6 +207,7 @@ public partial class MainWindow
         {
             ShowHideWindow(false);
         }
+        StartUpdateChecks();
     }
 
     private void StorageUI()
@@ -236,13 +237,16 @@ public partial class MainWindow
         await DialogHost.Show(_backupView, "RootDialog");
     }
 
-    private async void Exit_Click(object sender, RoutedEventArgs e)
+    private async void Exit_Click(object sender, RoutedEventArgs e) => await ExitDarfantAsync();
+
+    private async Task ExitDarfantAsync()
     {
         if (_exiting)
         {
             return;
         }
         _exiting = true;
+        _updateDownload?.Cancel();
         StorageUI();
         ViewModel?.ProfilesViewModel.ServerSpeedtestStop();
         tbNotify.Dispose();

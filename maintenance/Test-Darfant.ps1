@@ -30,7 +30,7 @@ if ($properties.AssemblyName -ne 'Darfant' -or $properties.RootNamespace -ne 'v2
 [xml] $manifest = Get-Content -LiteralPath $properties.ApplicationManifest -Raw
 if (!$manifest.SelectSingleNode("//*[@level='requireAdministrator']")) { throw 'The Darfant administrator manifest was lost.' }
 $tests = Join-Path $root 'v2rayN/ServiceLib.Tests/ServiceLib.Tests.csproj'
-foreach ($filter in @('/*/ServiceLib.Tests.Common/ServerLabelsTests/*', '/*/ServiceLib.Tests.Services/SpeedtestServiceBatchTests/*')) {
+foreach ($filter in @('/*/ServiceLib.Tests.Common/ServerLabelsTests/*', '/*/ServiceLib.Tests.Services/SpeedtestServiceBatchTests/*', '/*/ServiceLib.Tests.Services/DarfantUpdateServiceTests/*')) {
     & $Dotnet run --project $tests -c Release -- --treenode-filter $filter
     if ($LASTEXITCODE -ne 0) { throw "Darfant regression tests failed: $filter" }
 }

@@ -74,6 +74,7 @@
                                 <MenuItem Header="تنظیمات DNS" Command="{Binding DNSSettingCmd}" />
                                 <MenuItem Header="پشتیبان‌گیری" Click="Backup_Click" />
                                 <MenuItem Header="گزارش اتصال" Click="ShowLog_Click" />
+                                <MenuItem Header="به‌روزرسانی برنامه" Click="CheckUpdate_Click" />
                                 <Separator />
                                 <MenuItem Header="خروج از دارفانت" Click="Exit_Click" />
                             </ContextMenu>
@@ -82,6 +83,15 @@
                 </Grid>
                 <Border Grid.Row="1" Style="{StaticResource DfCard}" Padding="6" Margin="0,0,0,6">
                     <StackPanel>
+                        <Border x:Name="UpdatePanel" Background="{StaticResource DfSoft}" CornerRadius="9"
+                                Padding="6,3" Margin="0,0,0,6" Visibility="Collapsed">
+                            <DockPanel LastChildFill="True">
+                                <Button x:Name="UpdateAction" DockPanel.Dock="Left" Content="دانلود و نصب"
+                                        MinHeight="27" Padding="8,3" Style="{StaticResource DfPrimary}" Click="InstallUpdate_Click" />
+                                <TextBlock x:Name="UpdateStatus" VerticalAlignment="Center" Margin="7,0"
+                                           TextTrimming="CharacterEllipsis" AutomationProperties.LiveSetting="Polite" />
+                            </DockPanel>
+                        </Border>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <ToggleButton x:Name="togDarfantVpn" Style="{StaticResource PowerButton}"
@@ -192,7 +202,7 @@
             <md:Snackbar x:Name="MainSnackbar" MessageQueue="{md:MessageQueue}" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="12" MaxWidth="420" />
             <tb:TaskbarIcon x:Name="tbNotify" IconSource="/Darfant;component/Resources/Darfant.ico" ToolTipText="دارفانت"
                             NoLeftClickDelay="True" LeftClickCommand="{Binding StatusBarViewModel.ShowWindowCmd}">
-                <tb:TaskbarIcon.ContextMenu><ContextMenu FlowDirection="RightToLeft"><MenuItem Header="نمایش دارفانت" Click="ShowWindow_Click" /><MenuItem Header="خروج" Click="Exit_Click" /></ContextMenu></tb:TaskbarIcon.ContextMenu>
+                <tb:TaskbarIcon.ContextMenu><ContextMenu FlowDirection="RightToLeft"><MenuItem Header="نمایش دارفانت" Click="ShowWindow_Click" /><MenuItem Header="به‌روزرسانی برنامه" Click="CheckUpdate_Click" /><MenuItem Header="خروج" Click="Exit_Click" /></ContextMenu></tb:TaskbarIcon.ContextMenu>
             </tb:TaskbarIcon>
         </Grid>
     </md:DialogHost>
