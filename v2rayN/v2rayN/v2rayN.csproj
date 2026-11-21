@@ -2,15 +2,10 @@
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<AssemblyName>Darfant</AssemblyName>
-		<RootNamespace>v2rayN</RootNamespace>
-		<Product>دارفانت</Product>
-		<Version>1.2.1</Version>
-		<Description>دارفانت</Description>
 		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
 		<GenerateSatelliteAssembliesForCore>true</GenerateSatelliteAssembliesForCore>
 		<UseWPF>true</UseWPF>
-		<ApplicationIcon>Resources\Darfant.ico</ApplicationIcon>
+		<ApplicationIcon>Resources\v2rayN.ico</ApplicationIcon>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
 		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
@@ -38,13 +33,11 @@
 		<Resource Include="Resources\NotifyIcon3.ico" />
 		<Resource Include="Resources\NotifyIcon4.ico" />
 		<Resource Include="Resources\v2rayN.ico" />
-		<Resource Include="Resources\Darfant.ico" />
-		<Resource Include="Resources\Flags\*.png" />
-		<None Update="Resources\Flags\*.txt" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\ServiceLib\ServiceLib.csproj" />
 	</ItemGroup>
 
+    <Import Project="..\..\Darfant\Windows.targets" />
 </Project>

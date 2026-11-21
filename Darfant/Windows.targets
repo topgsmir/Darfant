@@ -1,0 +1,9 @@
+<Project>
+  <!-- Imported before the SDK computes output paths, so the EXE is Darfant.exe. -->
+  <Import Project="Branding.props" />
+  <ItemGroup>
+    <Resource Include="Resources\Darfant.ico" />
+    <Resource Include="Resources\Flags\*.png" />
+    <None Update="Resources\Flags\*.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

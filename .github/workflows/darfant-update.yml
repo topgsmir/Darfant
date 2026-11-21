@@ -1,0 +1,83 @@
+name: Prepare upstream update
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Check versions, or prepare an update branch
+        type: choice
+        options: [Check, V2rayN, Xray, Bundle]
+        default: Check
+      version:
+        description: Upstream version tag, or latest
+        type: string
+        default: latest
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Prepare the update
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMPONENT: ${{ inputs.component }}
+          UPSTREAM_VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          ./maintenance/Update-Darfant.ps1 -Component $env:COMPONENT -Version $env:UPSTREAM_VERSION
+      - name: Validate and build the proposed update
+        if: inputs.component != 'Check'
+        shell: pwsh
+        run: |
+          if (!(git status --porcelain)) { return }
+          ./maintenance/Test-Darfant.ps1
+          ./Build-Darfant.ps1 -Output (Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64')
+      - name: Push the tested update branch and open a draft pull request
+        if: inputs.component != 'Check'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMPONENT: ${{ inputs.component }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (!(git status --porcelain)) { Write-Output 'No dependency change.'; return }
+          git commit -m "Update upstream $env:COMPONENT"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not commit the validated update.' }
+          $branch = git branch --show-current
+          git push origin $branch
+          if ($LASTEXITCODE -ne 0) { throw 'Could not push the update branch.' }
+          $body = Join-Path $env:RUNNER_TEMP 'update-pr.md'
+          @"
+          Updates the pinned $env:COMPONENT dependency. Darfant's Windows build, maintenance integration checks, operator/ping regression tests, and portable packaging passed.
+
+          Review changes and check live connectivity before merging. Source conflicts are handled locally using maintenance/Update-Darfant.ps1; see maintenance/README.fa.md.
+          "@ | Set-Content -LiteralPath $body -Encoding utf8
+          gh pr create --repo $env:GITHUB_REPOSITORY --base main --head $branch --draft --title "Update upstream $env:COMPONENT" --body-file $body
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "The tested branch $branch was pushed. Create its pull request manually if repository settings restrict Actions pull requests."
+          }
+      - name: Save conflict report for local resolution
+        if: failure() && inputs.component == 'V2rayN'
+        shell: pwsh
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP 'upstream-conflicts.txt'
+          git status --short | Set-Content -LiteralPath $report
+          git diff --name-only --diff-filter=U | Add-Content -LiteralPath $report
+          git diff --cc | Add-Content -LiteralPath $report
+      - uses: actions/upload-artifact@v4
+        if: failure() && inputs.component == 'V2rayN'
+        with:
+          name: upstream-conflicts
+          path: ${{ runner.temp }}/upstream-conflicts.txt

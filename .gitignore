@@ -404,5 +404,10 @@ FodyWeavers.xsd
 *.sln.iml
 
 # Upstream automation belongs to the v2rayN release pipeline.
-/.github/workflows/
+/.github/workflows/*
+!/.github/workflows/darfant-*.yml
 /.github/dependabot.yml
+
+# Darfant dependency downloads and local package output.
+/.darfant-cache/
+/Darfant-windows-x64/

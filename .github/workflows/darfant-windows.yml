@@ -21,23 +21,18 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.404
+          global-json-file: global.json
       - name: Build and validate the Windows package
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $bundle = Join-Path $env:RUNNER_TEMP 'v2rayN-windows-64.zip'
           $output = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64'
           $archive = Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64.zip'
-          curl.exe --fail --location --retry 2 --output $bundle 'https://github.com/2dust/v2rayN/releases/download/7.25.6/v2rayN-windows-64.zip'
-          if ($LASTEXITCODE -ne 0) { throw 'Downloading the original v2rayN package failed.' }
-          if ((Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash -ne '9b94718c2a214a246b04dec84b9a27f1f0ced8489c2dd25eb80a0fbb806bd13f') {
-            throw 'The original v2rayN package failed SHA-256 verification.'
-          }
-
-          ./Build-Darfant.ps1 -Bundle $bundle -Output $output
+          ./maintenance/Test-Darfant.ps1
+          ./Build-Darfant.ps1 -Output $output
           $executable = Join-Path $output 'Darfant.exe'
           $manifest = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($executable))
           if ($manifest -notmatch 'requestedExecutionLevel\s+level="requireAdministrator"') {
@@ -48,7 +43,7 @@ jobs:
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $package = [IO.Compression.ZipFile]::OpenRead($archive)
           try {
-            foreach ($entry in @('Darfant.exe', 'LICENSE.txt', 'bin/xray/xray.exe', 'bin/sing_box/sing-box.exe', 'bin/mihomo/mihomo.exe', 'bin/srss/geoip-ir.srs')) {
+            foreach ($entry in @('Darfant.exe', 'LICENSE.txt', 'Darfant-dependencies.json', 'bin/xray/xray.exe', 'bin/sing_box/sing-box.exe', 'bin/mihomo/mihomo.exe', 'bin/srss/geoip-ir.srs')) {
               if (!$package.GetEntry("Darfant-windows-x64/$entry")) { throw "Missing ZIP entry: $entry" }
             }
           } finally {

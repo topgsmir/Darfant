@@ -1,0 +1,26 @@
+name: Validate Darfant changes
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Check merges, build, and Darfant regressions
+        shell: pwsh
+        run: ./maintenance/Test-Darfant.ps1
+      - name: Build the package from pinned dependencies
+        shell: pwsh
+        run: ./Build-Darfant.ps1 -Output (Join-Path $env:RUNNER_TEMP 'Darfant-windows-x64')

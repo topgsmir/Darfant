@@ -1,10 +1,10 @@
 # دارفانت
 
-دارفانت یک برنامهٔ فارسی برای ویندوز ۶۴ بیتی است که بر پایهٔ v2rayN 7.25.6 ساخته شده است.
+دارفانت یک برنامهٔ فارسی برای ویندوز ۶۴ بیتی است که بر پایهٔ v2rayN ساخته شده است. نسخهٔ دقیق منابع و هسته‌ها در [فهرست وابستگی‌ها](maintenance/dependencies.json) ثبت می‌شود.
 
 نسخهٔ ۱.۲ با ارتفاع پیش‌فرض ۵۸۰، فهرست سرورهای قابل‌تغییر اندازه و پرچم تصویری کشورها عرضه می‌شود. فهرست سرورها فضای باقی‌ماندهٔ پنجره را می‌گیرد و از عرض ۳۶۰ پیکسل قابل استفاده است.
 
-[دانلود نسخهٔ ویندوز](https://github.com/topgsmir/Darfant/releases/latest/download/Darfant-windows-x64.zip) · [راهنمای فارسی](Darfant-fa.md)
+[دانلود نسخهٔ ویندوز](https://github.com/topgsmir/Darfant/releases/latest/download/Darfant-windows-x64.zip) · [راهنمای فارسی](Darfant-fa.md) · [به‌روزرسانی سورس و هسته‌ها](maintenance/README.fa.md)
 
 همهٔ فایل‌های زیپ را استخراج کنید، سپس `Darfant.exe` را اجرا و درخواست دسترسی مدیر ویندوز را تأیید کنید.
 
@@ -18,16 +18,18 @@
 
 ## ساخت نسخهٔ ویندوز
 
-با .NET SDK 10 و PowerShell، بستهٔ اصلی [v2rayN-windows-64.zip از نسخهٔ 7.25.6](https://github.com/2dust/v2rayN/releases/tag/7.25.6) را کنار پوشهٔ مخزن بگذارید و از داخل مخزن دستور زیر را اجرا کنید.
+با .NET SDK 10.0.404، Git و PowerShell از داخل مخزن دستور زیر را اجرا کنید. نسخه‌های ثبت‌شده در `maintenance/dependencies.json` خودکار دریافت و SHA-256 آن‌ها بررسی می‌شود. بستهٔ اصلیِ موجود کنار پوشهٔ مخزن نیز در صورت مطابقت قابل استفاده است.
 
 ```powershell
 .\Build-Darfant.ps1
 ```
 
-برای تعیین محل فایل اصلی یا پوشهٔ خروجی از گزینه‌های `-Bundle` و `-Output` استفاده کنید.
+برای تعیین محل فایل اصلی یا پوشهٔ خروجی از گزینه‌های `-Bundle` و `-Output` استفاده کنید. نام و نسخهٔ اختصاصی دارفانت در `Darfant/Branding.props` نگهداری می‌شود.
+
+برای دیدن نسخه‌های جدید یا آماده‌کردن به‌روزرسانی Xray، سورس v2rayN و بستهٔ همراه، از بخش [Prepare upstream update](https://github.com/topgsmir/Darfant/actions/workflows/darfant-update.yml) استفاده کنید. هر به‌روزرسانی در شاخهٔ جدا بررسی می‌شود. [راهنمای کامل نگهداری](maintenance/README.fa.md) روش محلی و حل تداخل‌ها را توضیح می‌دهد.
 
 ## کد منبع و مجوز
 
-دارفانت از [کد منبع v2rayN 7.25.6](https://github.com/2dust/v2rayN/tree/1883178b5f1e222b6c6db2782e7a3d989b7cc18f) ساخته شده است. فایل `windows-assets/geoip-ir.srs` از پروژهٔ [Iran sing-box rules](https://github.com/Chocolate4U/Iran-sing-box-rules) می‌آید. [مجوز GPL-3.0](LICENSE) و [راهنمای نسخهٔ اصلی](README.upstream.md) در مخزن موجودند.
+نسخهٔ اولیهٔ دارفانت از [کد منبع v2rayN 7.25.6](https://github.com/2dust/v2rayN/tree/1883178b5f1e222b6c6db2782e7a3d989b7cc18f) ساخته شده است. فایل `windows-assets/geoip-ir.srs` از پروژهٔ [Iran sing-box rules](https://github.com/Chocolate4U/Iran-sing-box-rules) می‌آید. [مجوز GPL-3.0](LICENSE) و [راهنمای نسخهٔ اصلی](README.upstream.md) در مخزن موجودند.
 
 تصاویر پرچم‌ها از Twemoji، اثر Twitter, Inc. و دیگر مشارکت‌کنندگان، با مجوز CC BY 4.0 همراه برنامه هستند. متن مجوز و انتساب در پوشهٔ `Resources/Flags` قرار دارد. [منبع تصاویر](https://github.com/jdecked/twemoji)

@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <DarfantVersion>1.2.1</DarfantVersion>
+    <AssemblyName>Darfant</AssemblyName>
+    <RootNamespace>v2rayN</RootNamespace>
+    <Product>دارفانت</Product>
+    <Description>دارفانت</Description>
+    <Version>$(DarfantVersion)</Version>
+    <ApplicationIcon>Resources\Darfant.ico</ApplicationIcon>
+    <ApplicationManifest>$(MSBuildThisFileDirectory)app.manifest</ApplicationManifest>
+  </PropertyGroup>
+</Project>
