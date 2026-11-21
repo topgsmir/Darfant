@@ -1,4 +1,4 @@
-`Farsi.isl` is the user-contributed Farsi translation by Peyman Mohammadi, vendored unchanged from Inno Setup's official source tag `is-7_1_1`:
+`Farsi.isl` is the user-contributed Farsi translation by Peyman Mohammadi, vendored from Inno Setup's official source tag `is-7_1_1` (trailing whitespace in a comment normalized):
 
 https://github.com/jrsoftware/issrc/blob/is-7_1_1/Files/Languages/Unofficial/Farsi.isl
 
