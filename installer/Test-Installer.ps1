@@ -24,10 +24,24 @@ function Invoke-TestUninstall {
     if ($process.ExitCode -ne 0) { throw "Uninstaller QA failed with exit code $($process.ExitCode)." }
 }
 function Get-NormalizedShortcutPath([string] $Path) {
-    # Shell links may expose extended-length paths or a trailing directory separator.
+    # Shell links may expose long names while TEMP uses Windows 8.3 aliases.
+    if (!('DarfantInstallerQAPaths' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System.Runtime.InteropServices;
+using System.Text;
+public static class DarfantInstallerQAPaths {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern uint GetLongPathName(string path, StringBuilder result, uint capacity);
+}
+'@
+    }
     $expanded = [Environment]::ExpandEnvironmentVariables($Path).Trim('"')
     if ($expanded.StartsWith('\\?\')) { $expanded = $expanded.Substring(4) }
-    return [IO.Path]::GetFullPath($expanded).TrimEnd('\')
+    $full = [IO.Path]::GetFullPath($expanded)
+    $buffer = [Text.StringBuilder]::new(32768)
+    $length = [DarfantInstallerQAPaths]::GetLongPathName($full, $buffer, $buffer.Capacity)
+    if ($length -eq 0 -or $length -ge $buffer.Capacity) { throw "Cannot resolve shortcut path '$Path'." }
+    return $buffer.ToString().TrimEnd('\')
 }
 try {
     Invoke-TestSetup
