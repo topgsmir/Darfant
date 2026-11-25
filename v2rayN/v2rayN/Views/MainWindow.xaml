@@ -175,7 +175,7 @@
                                             </Image>
                                             <TextBlock Grid.Column="1" Text="{Binding Remarks}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding Remarks}" VerticalAlignment="Center" />
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                                <TextBlock Text="{Binding DelayVal, Converter={StaticResource PingResult}}" FontSize="11" MaxWidth="84" TextTrimming="CharacterEllipsis" Foreground="{StaticResource DfAccent}" FlowDirection="LeftToRight" />
+                                                <TextBlock Text="{Binding DelayVal, Converter={StaticResource PingResult}}" ToolTip="{Binding DelayVal, Converter={StaticResource PingResult}}" FontSize="11" MaxWidth="84" TextTrimming="CharacterEllipsis" Foreground="{StaticResource DfAccent}" FlowDirection="LeftToRight" />
                                                 <TextBlock x:Name="ActiveMarker" Text="انتخاب‌شده" FontSize="9" Foreground="{StaticResource DfAccent}" Margin="0,2,0,0" Visibility="Collapsed" />
                                             </StackPanel>
                                         </Grid>

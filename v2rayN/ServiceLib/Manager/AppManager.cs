@@ -672,7 +672,33 @@ public sealed class AppManager
         }
 
         var item = _config.CoreTypeItem?.FirstOrDefault(it => it.ConfigType == eConfigType);
-        return item?.CoreType ?? ECoreType.Xray;
+        var coreType = item?.CoreType ?? ECoreType.Xray;
+        if (Utils.IsWindows() && coreType == ECoreType.Xray && eConfigType == EConfigType.VLESS &&
+            profileItem != null && IsCompatiblePlainVless(profileItem))
+        {
+            return ECoreType.sing_box;
+        }
+        return coreType;
+    }
+
+    private static bool IsCompatiblePlainVless(ProfileItem profile)
+    {
+        var security = profile.StreamSecurity?.Trim().ToLowerInvariant();
+        var protocol = profile.GetProtocolExtra();
+        var encryption = protocol.VlessEncryption?.Trim().ToLowerInvariant();
+        if (security is not (null or "" or Global.None) || encryption is not (null or "" or Global.None) ||
+            protocol.Flow.IsNotEmpty() || profile.Finalmask.IsNotEmpty() || !Guid.TryParse(profile.Password, out _) ||
+            Utils.IsPrivateNetwork(profile.Address) || profile.Address.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var transport = profile.GetNetwork();
+        if (transport == nameof(ETransport.raw))
+        {
+            return profile.GetTransportExtra().RawHeaderType is null or "" or Global.None or Global.RawHeaderHttp;
+        }
+        return transport is nameof(ETransport.ws) or nameof(ETransport.httpupgrade);
     }
 
     #endregion Core Type

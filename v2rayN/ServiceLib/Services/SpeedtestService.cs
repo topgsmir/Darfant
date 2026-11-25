@@ -252,55 +252,81 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
     private async Task RunRealPingBatchAsync(List<ServerTestItem> lstSelected,
         ConcurrentDictionary<string, byte> completedIds, int pageSize = 0, CancellationToken ct = default)
     {
-        if (pageSize <= 0)
-        {
-            pageSize = Math.Min(lstSelected.Count, _speedTestPageSize);
-        }
-        var lstTest = GetTestBatchItem(lstSelected, pageSize);
-
-        List<ServerTestItem> lstFailed = [];
-        foreach (var lst in lstTest)
-        {
-            var ret = await RunRealPingAsync(lst, completedIds, ct);
-            if (ret == false)
-            {
-                lstFailed.AddRange(lst);
-            }
-            await Task.Delay(_delayInterval, ct);
-        }
-
-        //Retest the failed part
-        var pageSizeNext = pageSize / 2;
-        if (lstFailed.Count > 0 && pageSizeNext > 0)
+        var batchSize = pageSize > 0 ? pageSize : Math.Min(lstSelected.Count, _speedTestPageSize);
+        var missingCores = new HashSet<ECoreType>();
+        foreach (var batch in GetTestBatchItem(lstSelected, batchSize))
         {
             ct.ThrowIfCancellationRequested();
-
-            await UpdateFunc("", string.Format(ResUI.SpeedtestingTestFailedPart, lstFailed.Count));
-
-            if (pageSizeNext > _config.SpeedTestItem.MixedConcurrencyCount)
+            var core = batch[0].CoreType;
+            if (missingCores.Contains(core))
             {
-                await RunRealPingBatchAsync(lstFailed, completedIds, pageSizeNext, ct);
+                await MarkPingFailureAsync(batch, "هسته پیدا نشد", completedIds);
+                continue;
             }
-            else
+            if (CoreInfoManager.Instance.GetCoreExecFile(CoreInfoManager.Instance.GetCoreInfo(core), out var message).IsNullOrEmpty())
             {
-                await RunMixedTestAsync(lstFailed, completedIds, Math.Max(1, _config.SpeedTestItem.MixedConcurrencyCount), false, ct);
+                missingCores.Add(core);
+                await UpdateFunc("", message);
+                await MarkPingFailureAsync(batch, "هسته پیدا نشد", completedIds);
+                continue;
             }
+            await RunRealPingIsolatedAsync(batch, completedIds, ct);
+            await Task.Delay(_delayInterval, ct);
         }
     }
 
-    private async Task<bool> RunRealPingAsync(List<ServerTestItem> selecteds,
-        ConcurrentDictionary<string, byte> completedIds, CancellationToken ct = default)
+    private async Task MarkPingFailureAsync(List<ServerTestItem> selecteds, string message,
+        ConcurrentDictionary<string, byte> completedIds)
     {
-        ProcessService processService = null;
+        foreach (var item in selecteds)
+        {
+            ProfileExManager.Instance.SetTestDelay(item.IndexId, -1);
+            await UpdateFunc(item.IndexId, message);
+            completedIds.TryAdd(item.IndexId, 0);
+        }
+    }
+
+    private async Task RunRealPingIsolatedAsync(List<ServerTestItem> selecteds,
+        ConcurrentDictionary<string, byte> completedIds, CancellationToken ct)
+    {
+        var failure = await RunRealPingAsync(selecteds, completedIds, ct);
+        if (failure == null)
+        {
+            return;
+        }
+
+        // One invalid outbound makes the core reject the entire configuration.
+        // Split the batch, keeping shared local listener ports sequential.
+        if (selecteds.Count > 1)
+        {
+            var midpoint = selecteds.Count / 2;
+            await RunRealPingIsolatedAsync(selecteds.GetRange(0, midpoint), completedIds, ct);
+            await RunRealPingIsolatedAsync(selecteds.GetRange(midpoint, selecteds.Count - midpoint), completedIds, ct);
+            return;
+        }
+
+        await MarkPingFailureAsync(selecteds, failure, completedIds);
+    }
+
+    private async Task<string?> RunRealPingAsync(List<ServerTestItem> selecteds,
+        ConcurrentDictionary<string, byte> completedIds, CancellationToken ct)
+    {
+        ProcessService? processService = null;
         try
         {
             ct.ThrowIfCancellationRequested();
-            processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds);
+            string? failure = null;
+            processService = await CoreManager.Instance.LoadCoreConfigSpeedtest(selecteds, reason => failure = reason);
             if (processService is null)
             {
-                return false;
+                return failure ?? "کانفیگ نامعتبر";
             }
-            await Task.Delay(1000, ct);
+            await Task.Delay(350, ct);
+            if (processService.HasExited)
+            {
+                await processService.WaitForExitAsync();
+                return CoreManager.DescribeCoreFailure(processService.FailureOutput);
+            }
 
             var parallelOptions = new ParallelOptions
             {
@@ -347,7 +373,7 @@ public class SpeedtestService(Config config, Func<SpeedTestResult, Task> updateF
                 processService.Dispose();
             }
         }
-        return true;
+        return null;
     }
 
     private async Task RunUdpTestBatchAsync(List<ServerTestItem> lstSelected,

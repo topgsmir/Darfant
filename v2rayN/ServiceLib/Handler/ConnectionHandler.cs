@@ -69,40 +69,35 @@ public static class ConnectionHandler
     public static async Task<int> GetRealPingTime(IWebProxy? webProxy, CancellationToken cancellationToken = default)
     {
         var url = AppManager.Instance.Config.SpeedTestItem.SpeedPingTestUrl;
-        var responseTime = -1;
-        try
+        using var client = new HttpClient(new SocketsHttpHandler()
         {
-            using var timeoutCts = new CancellationTokenSource();
-            timeoutCts.CancelAfter(Global.LocalFetch);
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-            var linkedToken = linkedCts.Token;
-            using var client = new HttpClient(new SocketsHttpHandler()
+            Proxy = webProxy,
+            UseProxy = webProxy != null,
+            ConnectTimeout = Global.LocalFetch,
+            AllowAutoRedirect = false,
+        });
+        var targets = url == Global.SpeedPingTestUrls[0]
+            ? new[] { url, Global.SpeedPingTestUrls[3] }
+            : new[] { url };
+        foreach (var target in targets)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(Global.LocalFetch);
+            var timer = Stopwatch.StartNew();
+            try
             {
-                Proxy = webProxy,
-                UseProxy = webProxy != null,
-                ConnectTimeout = Global.LocalFetch,
-            });
-
-            List<int> oneTime = [];
-            for (var i = 0; i < 2; i++)
-            {
-                var timer = Stopwatch.StartNew();
-                await client.GetAsync(url, linkedToken).ConfigureAwait(false);
-                timer.Stop();
-                oneTime.Add((int)timer.Elapsed.TotalMilliseconds);
-                await Task.Delay(100, linkedToken);
+                using var response = await client.GetAsync(target, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    return Math.Max(1, (int)timer.ElapsedMilliseconds);
+                }
             }
-            responseTime = oneTime.Where(x => x > 0).OrderBy(x => x).FirstOrDefault();
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
+            catch (HttpRequestException) { }
+            catch (InvalidOperationException) { }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        {
-            // Ignore
-        }
-        return responseTime;
+        return -1;
     }
 
     /// <summary>

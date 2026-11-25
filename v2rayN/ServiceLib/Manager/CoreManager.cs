@@ -103,8 +103,12 @@ public class CoreManager
         }
     }
 
-    public async Task<ProcessService?> LoadCoreConfigSpeedtest(List<ServerTestItem> selecteds)
+    public async Task<ProcessService?> LoadCoreConfigSpeedtest(List<ServerTestItem> selecteds, Action<string>? reportFailure = null)
     {
+        foreach (var item in selecteds)
+        {
+            item.AllowTest = false;
+        }
         var coreType = selecteds.FirstOrDefault()?.CoreType == ECoreType.sing_box ? ECoreType.sing_box : ECoreType.Xray;
         var fileName = string.Format(Global.CoreSpeedtestConfigFileName, Utils.GetGuid(false));
         var configPath = Utils.GetBinConfigPath(fileName);
@@ -115,11 +119,14 @@ public class CoreManager
             return null;
         }
 
-        await UpdateFunc(false, string.Format(ResUI.StartService, DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss")));
-        await UpdateFunc(false, configPath);
+        if (!selecteds.Any(item => item.AllowTest))
+        {
+            reportFailure?.Invoke("کانفیگ نامعتبر");
+            return null;
+        }
 
         var coreInfo = CoreInfoManager.Instance.GetCoreInfo(coreType);
-        return await RunProcess(coreInfo, fileName, true, false);
+        return await RunProcess(coreInfo, fileName, true, false, reportFailure: reportFailure);
     }
 
     public async Task<ProcessService?> LoadCoreConfigSpeedtest(ServerTestItem testItem)
@@ -302,12 +309,14 @@ public class CoreManager
             && isNonWindows;
     }
 
-    private async Task<ProcessService?> RunProcess(CoreInfo? coreInfo, string configPath, bool displayLog, bool mayNeedSudo, bool isTunLaunch = false)
+    private async Task<ProcessService?> RunProcess(CoreInfo? coreInfo, string configPath, bool displayLog, bool mayNeedSudo,
+        bool isTunLaunch = false, Action<string>? reportFailure = null)
     {
         var fileName = CoreInfoManager.Instance.GetCoreExecFile(coreInfo, out var msg);
         if (fileName.IsNullOrEmpty())
         {
-            await UpdateFunc(false, msg);
+            await UpdateFunc(mayNeedSudo, msg);
+            reportFailure?.Invoke("هسته پیدا نشد");
             return null;
         }
 
@@ -321,17 +330,20 @@ public class CoreManager
                 return await CoreAdminManager.Instance.RunProcessAsLinuxSudo(fileName, coreInfo, configPath);
             }
 
-            return await RunProcessNormal(fileName, coreInfo, configPath, displayLog);
+            return await RunProcessNormal(fileName, coreInfo!, configPath, displayLog, mayNeedSudo, reportFailure);
         }
         catch (Exception ex)
         {
             Logging.SaveLog(_tag, ex);
-            await UpdateFunc(mayNeedSudo, ex.Message);
+            var summary = $"{coreInfo?.CoreType}: {ResUI.FailedToRunCore}";
+            await UpdateFunc(mayNeedSudo, summary);
+            reportFailure?.Invoke("هسته اجرا نشد");
             return null;
         }
     }
 
-    private async Task<ProcessService?> RunProcessNormal(string fileName, CoreInfo? coreInfo, string configPath, bool displayLog)
+    private async Task<ProcessService?> RunProcessNormal(string fileName, CoreInfo coreInfo, string configPath, bool displayLog,
+        bool connection, Action<string>? reportFailure)
     {
         var environmentVars = new Dictionary<string, string>();
         foreach (var kv in coreInfo.Environment)
@@ -339,27 +351,73 @@ public class CoreManager
             environmentVars[kv.Key] = string.Format(kv.Value, coreInfo.AbsolutePath ? Utils.GetBinConfigPath(configPath).AppendQuotes() : configPath);
         }
 
+        if (Utils.IsWindows() && coreInfo.CoreType == ECoreType.Xray)
+        {
+            var bundled = Utils.GetBaseDirectory("bin");
+            if (!File.Exists(Path.Combine(environmentVars[Global.XrayLocalAsset], "geoip.dat")) &&
+                File.Exists(Path.Combine(bundled, "geoip.dat")))
+            {
+                environmentVars[Global.XrayLocalAsset] = bundled;
+                environmentVars[Global.XrayLocalCert] = bundled;
+            }
+        }
+
         var procService = new ProcessService(
             fileName: fileName,
             arguments: string.Format(coreInfo.Arguments, coreInfo.AbsolutePath ? Utils.GetBinConfigPath(configPath).AppendQuotes() : configPath),
             workingDirectory: Utils.GetBinConfigPath(),
-            displayLog: displayLog,
+            displayLog: true,
             redirectInput: false,
             environmentVars: environmentVars,
-            updateFunc: _updateFunc
+            updateFunc: displayLog && connection ? _updateFunc : null
         );
 
-        await procService.StartAsync();
-
-        await Task.Delay(100);
-
-        if (procService is null or { HasExited: true })
+        try
         {
-            throw new Exception(ResUI.FailedToRunCore);
+            await procService.StartAsync();
+            var exit = procService.WaitForExitAsync();
+            await Task.WhenAny(exit, Task.Delay(350));
+            if (procService.HasExited)
+            {
+                await exit;
+                var reason = DescribeCoreFailure(procService.FailureOutput);
+                var detail = $"{coreInfo.CoreType} ({procService.ExitCode}): {reason}";
+                Logging.SaveLog(detail);
+                reportFailure?.Invoke(reason);
+                if (connection)
+                {
+                    await UpdateFunc(true, detail);
+                }
+                procService.Dispose();
+                return null;
+            }
+            AddProcessJob(procService.Handle);
+            return procService;
         }
-        AddProcessJob(procService.Handle);
+        catch
+        {
+            procService.Dispose();
+            throw;
+        }
+    }
 
-        return procService;
+    internal static string DescribeCoreFailure(string? output)
+    {
+        if (output?.Contains("without TLS", StringComparison.OrdinalIgnoreCase) == true &&
+            output.Contains("prohibited", StringComparison.OrdinalIgnoreCase))
+        {
+            return "سرور عمومی بدون TLS یا رمزنگاری";
+        }
+        if (output?.Contains("address already in use", StringComparison.OrdinalIgnoreCase) == true ||
+            output?.Contains("only one usage of each socket address", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "پورت محلی اشغال است";
+        }
+        if (output?.Contains("failed to load config", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "کانفیگ با هسته سازگار نیست";
+        }
+        return ResUI.FailedToRunCore;
     }
 
     private void AddProcessJob(nint processHandle)

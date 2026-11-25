@@ -5,6 +5,11 @@ public class ProcessService : IDisposable
     private readonly Process _process;
     private readonly Func<bool, string, Task>? _updateFunc;
     private bool _isDisposed;
+    private string? _failureOutput;
+
+    internal int ExitCode => _process.ExitCode;
+    internal string? FailureOutput => Volatile.Read(ref _failureOutput);
+    internal Task WaitForExitAsync() => _process.WaitForExitAsync();
 
     public int Id => _process.Id;
     public IntPtr Handle => _process.Handle;
@@ -122,6 +127,12 @@ public class ProcessService : IDisposable
         {
             if (e.Data.IsNotEmpty())
             {
+                if (e.Data.Contains("failed to", StringComparison.OrdinalIgnoreCase) ||
+                    e.Data.Contains("fatal", StringComparison.OrdinalIgnoreCase) ||
+                    e.Data.Contains("address already in use", StringComparison.OrdinalIgnoreCase))
+                {
+                    Volatile.Write(ref _failureOutput, e.Data);
+                }
                 _ = _updateFunc?.Invoke(false, e.Data + Environment.NewLine);
             }
         }
@@ -129,17 +140,7 @@ public class ProcessService : IDisposable
         _process.OutputDataReceived += dataHandler;
         _process.ErrorDataReceived += dataHandler;
 
-        _process.Exited += (s, e) =>
-        {
-            try
-            {
-                _process.OutputDataReceived -= dataHandler;
-                _process.ErrorDataReceived -= dataHandler;
-            }
-            catch
-            {
-            }
-        };
+
     }
 
     public void Dispose()

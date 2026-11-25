@@ -33,20 +33,35 @@ public sealed class CoreInfoManager
     {
         var fileName = string.Empty;
         msg = string.Empty;
-        foreach (var name in coreInfo?.CoreExes)
+        if (coreInfo == null)
         {
-            var vName = Utils.GetBinPath(Utils.GetExeName(name), coreInfo.CoreType.ToString());
-            if (File.Exists(vName))
+            msg = ResUI.FailedToRunCore;
+            return fileName;
+        }
+
+        var coreFolder = coreInfo.CoreType.ToString();
+        foreach (var name in coreInfo.CoreExes ?? [])
+        {
+            var exe = Utils.GetExeName(name);
+            var configured = Utils.GetBinPath(exe, coreFolder);
+            if (File.Exists(configured))
             {
-                fileName = vName;
-                break;
+                return configured;
+            }
+            if (Utils.IsWindows())
+            {
+                var bundled = Utils.GetBaseDirectory(Path.Combine("bin", coreFolder.ToLowerInvariant(), exe));
+                if (File.Exists(bundled))
+                {
+                    return bundled;
+                }
             }
         }
-        if (fileName.IsNullOrEmpty())
-        {
-            msg = string.Format(ResUI.NotFoundCore, Utils.GetBinPath("", coreInfo?.CoreType.ToString()), coreInfo?.CoreExes?.LastOrDefault(), coreInfo?.Url);
-            Logging.SaveLog(msg);
-        }
+
+        msg = Utils.IsWindows() && coreInfo.CoreType is ECoreType.Xray or ECoreType.sing_box or ECoreType.mihomo
+            ? $"{coreFolder}: فایل هسته پیدا نشد. جدیدترین فایل نصب دارفانت را از گیت‌هاب دوباره اجرا کنید."
+            : string.Format(ResUI.NotFoundCore, Utils.GetBinPath("", coreFolder), coreInfo.CoreExes?.LastOrDefault(), coreInfo.Url);
+        Logging.SaveLog(msg);
         return fileName;
     }
 
